@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UniFi Firmware Tracker</title>
+<style>
+  :root {
+    --bg: #12141a; --card: #1c1f27; --border: #2b2f3a;
+    --text: #e6e8ee; --muted: #8b90a0; --accent: #338fff; --chip: #262a35;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  header { padding: 20px 24px 12px; border-bottom: 1px solid var(--border); }
+  header h1 { font-size: 20px; margin: 0; }
+  .filters { display: flex; flex-wrap: wrap; gap: 10px; padding: 14px 24px; }
+  .filters input, .filters select {
+    background: var(--card); color: var(--text); border: 1px solid var(--border);
+    border-radius: 6px; padding: 7px 10px; font-size: 14px;
+    min-width: 0; max-width: 100%; }
+  .filters input { flex: 1 1 220px; max-width: 360px; }
+  @media (max-width: 600px) {
+    .filters input, .filters select { flex: 1 1 100%; max-width: 100%; width: 100%; }
+  }
+  #count { color: var(--muted); font-size: 13px; align-self: center; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+          gap: 14px; padding: 0 24px 32px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+          padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
+  .card h2 { font-size: 15px; margin: 0; line-height: 1.35; }
+  .badges { display: flex; gap: 6px; flex-wrap: wrap; }
+  .badge { background: var(--chip); color: var(--muted); font-size: 11px;
+           padding: 2px 8px; border-radius: 999px; text-transform: uppercase; letter-spacing: .04em; }
+  .badge.fw { color: #7fc4ff; }
+  .row { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; }
+  .row .k { color: var(--muted); }
+  select.ver { width: 100%; background: var(--bg); color: var(--text);
+               border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; }
+  .dl { margin-top: 2px; display: flex; gap: 8px; align-items: center; }
+  .dl a.btn { background: var(--accent); color: #fff; text-decoration: none;
+              padding: 6px 14px; border-radius: 6px; font-size: 13px; font-weight: 600; }
+  .dl a.btn.disabled { background: var(--chip); color: var(--muted); pointer-events: none; }
+  .dl a.notes { color: var(--muted); font-size: 13px; }
+  .dl a.notes:hover { color: var(--accent); }
+  .empty { grid-column: 1/-1; color: var(--muted); text-align: center; padding: 48px 0; }
+</style>
+</head>
+<body>
+<header>
+  <h1>UniFi Firmware Tracker</h1>
+</header>
+
+<div class="filters">
+  <input id="search" type="search" placeholder="Search devices… e.g. Dream Machine Pro Max">
+  <select id="deviceSel"><option value="">All devices</option></select>
+  <select id="catSel">
+    <option value="Firmware" selected>Firmware</option>
+    <option value="Software">Software</option>
+    <option value="">All categories</option>
+  </select>
+  <span id="count"></span>
+</div>
+
+<div class="grid" id="grid"></div>
+
+<script>
+const DEVICES = {{ devices_json | safe }};
+
+const grid = document.getElementById('grid');
+const search = document.getElementById('search');
+const deviceSel = document.getElementById('deviceSel');
+const catSel = document.getElementById('catSel');
+const count = document.getElementById('count');
+
+function fmtSize(b) {
+  if (!b) return null;
+  const mb = b / 1048576;
+  return mb >= 1024 ? (mb / 1024).toFixed(2) + ' GB' : mb.toFixed(1) + ' MB';
+}
+
+function populateDeviceSelect() {
+  const names = [...new Set(DEVICES
+    .filter(d => !catSel.value || d.category === catSel.value)
+    .map(d => d.device))].sort((a, b) => a.localeCompare(b));
+  const cur = deviceSel.value;
+  deviceSel.length = 1;
+  for (const n of names) deviceSel.add(new Option(n, n));
+  deviceSel.value = names.includes(cur) ? cur : '';
+}
+
+function card(d) {
+  const el = document.createElement('div');
+  el.className = 'card';
+  const latest = d.releases[0];
+  el.innerHTML = `
+    <h2></h2>
+    <div class="badges">
+      <span class="badge ${d.category === 'Firmware' ? 'fw' : ''}"></span>
+      <span class="badge">latest ${latest.version || '?'} · ${latest.date}</span>
+    </div>
+    <select class="ver"></select>
+    <div class="row"><span class="k">Published</span><span class="v date"></span></div>
+    <div class="row"><span class="k">Size</span><span class="v size"></span></div>
+    <div class="dl"><a class="btn" target="_blank" rel="noopener">Download</a>
+      <a class="notes" target="_blank" rel="noopener">Release notes</a></div>`;
+  el.querySelector('h2').textContent = d.device;
+  el.querySelector('.badge').textContent = d.category;
+  const sel = el.querySelector('select');
+  d.releases.forEach((r, i) => sel.add(new Option(`${r.version || r.name} — ${r.date}`, i)));
+  const show = i => {
+    const r = d.releases[i];
+    el.querySelector('.date').textContent = r.date;
+    el.querySelector('.size').textContent = fmtSize(r.size) || '—';
+    const btn = el.querySelector('a.btn');
+    if (r.url) { btn.href = r.url; btn.classList.remove('disabled'); btn.textContent = 'Download ' + (r.version || ''); }
+    else { btn.removeAttribute('href'); btn.classList.add('disabled'); btn.textContent = 'No file'; }
+    const notes = el.querySelector('a.notes');
+    if (r.notes) { notes.href = r.notes; notes.style.display = ''; } else notes.style.display = 'none';
+  };
+  sel.addEventListener('change', () => show(+sel.value));
+  show(0);
+  return el;
+}
+
+function render() {
+  const q = search.value.trim().toLowerCase();
+  grid.textContent = '';
+  let n = 0;
+  for (const d of DEVICES) {
+    if (catSel.value && d.category !== catSel.value) continue;
+    if (deviceSel.value && d.device !== deviceSel.value) continue;
+    if (q && !d.device.toLowerCase().includes(q)) continue;
+    grid.appendChild(card(d));
+    n++;
+  }
+  count.textContent = n + ' device' + (n === 1 ? '' : 's');
+  if (!n) grid.innerHTML = '<div class="empty">No devices match. Data may still be loading — try Refresh.</div>';
+}
+
+search.addEventListener('input', render);
+deviceSel.addEventListener('change', render);
+catSel.addEventListener('change', () => { populateDeviceSelect(); render(); });
+
+populateDeviceSelect();
+render();
+</script>
+</body>
+</html>
