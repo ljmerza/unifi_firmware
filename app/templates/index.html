@@ -123,14 +123,17 @@ function card(d) {
   return el;
 }
 
+// hyphens and spaces are interchangeable: "u7-pro" matches "U7 Pro" and vice versa
+const norm = s => s.toLowerCase().replace(/[\s-]+/g, ' ');
+
 function render() {
-  const q = search.value.trim().toLowerCase();
+  const q = norm(search.value.trim());
   grid.textContent = '';
   let n = 0;
   for (const d of DEVICES) {
     if (catSel.value && d.category !== catSel.value) continue;
     if (deviceSel.value && d.device !== deviceSel.value) continue;
-    if (q && !d.device.toLowerCase().includes(q)) continue;
+    if (q && !norm(d.device).includes(q)) continue;
     grid.appendChild(card(d));
     n++;
   }
