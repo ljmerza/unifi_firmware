@@ -15,6 +15,10 @@ import scraper
             "UniFi Network Application for UniFi OS Native",
         ),
         ("Some Release", "", "Some Release"),
+        ("UniFi firmware 6.7.31 for U7-Pro-Outdoor-US", "6.7.31", "U7-Pro-Outdoor-US"),
+        ("UniFi firmware 6.6.22 for U-LTE/U-LTE-Pro", "6.6.22", "U-LTE/U-LTE-Pro"),
+        ("Wave LR/Wave Nano Firmware v2.3.1", "2.3.1", "Wave LR/Wave Nano Firmware"),
+        ("airGateway firmware v1.0.3", "v1.0.3", "airGateway firmware"),
     ],
 )
 def test_device_name(name, version, expected):

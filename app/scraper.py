@@ -51,7 +51,10 @@ def device_name(name: str, version: str) -> str:
     if version:
         dev = dev.replace(version, " ")
     dev = re.sub(r"\s+", " ", dev).strip()
-    dev = re.sub(r"[-,]\s*$", "", dev).strip()
+    # leftover 'v' when the name had 'Firmware v2.3.1' but version is '2.3.1'
+    dev = re.sub(r"[-,]\s*$|\s+v$", "", dev).strip()
+    # 'UniFi firmware 6.6.22 for U7-Pro' -> the device is what follows 'for'
+    dev = re.sub(r"^UniFi firmware for\s+", "", dev, flags=re.IGNORECASE)
     return dev or name
 
 
