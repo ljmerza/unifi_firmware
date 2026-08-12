@@ -6,11 +6,10 @@ import os
 import sqlite3
 import threading
 
+import scraper
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from flask import Flask, jsonify, render_template
-
-import scraper
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
 log = logging.getLogger("web")
@@ -39,9 +38,7 @@ def run_scrape():
 def load_data():
     conn = scraper.get_conn()
     conn.row_factory = sqlite3.Row
-    rows = conn.execute(
-        "SELECT * FROM releases ORDER BY device, date_published DESC, id DESC"
-    ).fetchall()
+    rows = conn.execute("SELECT * FROM releases ORDER BY device, date_published DESC, id DESC").fetchall()
     last = conn.execute("SELECT value FROM meta WHERE key='last_scrape'").fetchone()
     conn.close()
 

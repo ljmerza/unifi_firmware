@@ -7,7 +7,7 @@ import os
 import re
 import sqlite3
 import time
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 
 import requests
 
@@ -85,8 +85,9 @@ def scrape() -> dict:
         if ids in seen_pages and seen_pages[ids] != page:
             for attempt in range(1, 5):
                 wait = 65 * attempt
-                log.warning("page %s duplicates page %s (CDN cache), retrying in %ss",
-                            page, seen_pages[ids], wait)
+                log.warning(
+                    "page %s duplicates page %s (CDN cache), retrying in %ss", page, seen_pages[ids], wait
+                )
                 time.sleep(wait)
                 data = fetch_page(page)
                 downloads = data.get("downloads", [])
@@ -117,7 +118,9 @@ def scrape() -> dict:
                 d.get("size"),
                 d.get("release_notes_url"),
             )
-        log.info("page %s/%s: %s downloads, %s kept total", page, total_pages, len(downloads), len(rows_by_id))
+        log.info(
+            "page %s/%s: %s downloads, %s kept total", page, total_pages, len(downloads), len(rows_by_id)
+        )
         # API is sorted newest-first; stop after two consecutive pages fully older than the cutoff
         if page_dates and max(page_dates) < cutoff:
             old_pages_in_a_row += 1
@@ -134,13 +137,14 @@ def scrape() -> dict:
         conn.execute("DELETE FROM releases WHERE date_published < ?", (cutoff.isoformat(),))
         conn.executemany(
             "INSERT OR REPLACE INTO releases "
-            "(id, name, device, version, category, product_lines, date_published, file_url, size, release_notes_url) "
+            "(id, name, device, version, category, product_lines, "
+            "date_published, file_url, size, release_notes_url) "
             "VALUES (?,?,?,?,?,?,?,?,?,?)",
             rows,
         )
         conn.execute(
             "INSERT OR REPLACE INTO meta (key, value) VALUES ('last_scrape', ?)",
-            (datetime.now(timezone.utc).isoformat(timespec="seconds"),),
+            (datetime.now(UTC).isoformat(timespec="seconds"),),
         )
     conn.close()
     log.info("scrape done: %s releases stored (cutoff %s)", len(rows), cutoff)
